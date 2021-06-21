@@ -12,7 +12,23 @@ var adconfig = require('./adconfig')
 var ad = new activedirectory(adconfig)
 
 // highside message api URL (to send txt messages)
-var highside = 'https://api01.highside.net/start/aaaaaaaaaa?number=' // needs to be edited to a functional API URL to send text
+//var highside = 'https://api01.highside.net/start/aaaaaaaaaa?number=' // needs to be edited to a functional API URL to send text
+
+var countrycode = "+81"
+var pushbullet_opt = {
+  url: 'https://api.pushbullet.com/v2/texts',
+  headers: {
+    'Content-Type':'application/json',
+    'Access-Token':'PUSHBULLET_ACCESS_TOKEN'
+  },
+  json: {
+    "data": {
+      "target_device_iden": "PUSHBULLET_DEVICE_IDEN",
+      "addresses": ['+819000000000'],
+      "message": "The text message you want to send"
+    }
+  }
+}
 
 //var sendTextTo = 'mobile' // refers to the LDAP attribute with the number. use mobile for AD Mobile Number, use telephoneNumber for regular AD Telephone Number.
 
@@ -123,11 +139,30 @@ server.on("message", function (msg, rinfo) {
 						// request sms at highside and send to user's phonenumber
 						if (user.telephoneNumber) {
 							
-							console.log('sending text to this number '+user.telephoneNumber)
 							// has phonenumber
-							request.get(highside + user.telephoneNumber, function (error, response, body) {
+
+							//prepare telephone number for international call
+							var smsdest = countrycode + user.telephoneNumber.slice(1)
+
+							console.log('sending text to this number: ' + smsdest)
+							//#request.get(highside + user.telephoneNumber, function (error, response, body) {
+							//#	if (!error && response.statusCode == 200) {
+							//#		user.code = body
+							//#		challenges.push(user)
+							//#		sendResponse('Access-Challenge')
+							//#	}
+							//#})
+
+							//get 6-digits as OTP code
+							var otpcode = String(Math.floor( Math.random() * 1000000 )).padStart(6, '0');
+							
+							//send sms
+							pushbullet_opt.json.addresses = [smsdest]
+							pushbullet_opt.json.data.message = "OTP code: " + otpcode
+							request.post(pushbullet_opt, function (error, response, body) {
 								if (!error && response.statusCode == 200) {
-									user.code = body
+									//set otpcode as RADIUS password and request re-auth
+									user.code = otpcode
 									challenges.push(user)
 									sendResponse('Access-Challenge')
 								}
