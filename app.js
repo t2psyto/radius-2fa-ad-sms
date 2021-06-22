@@ -23,7 +23,7 @@ var pushbullet_opt = {
   },
   json: {
     "data": {
-      "target_device_iden": "PUSHBULLET_DEVICE_IDEN",
+      "target_device_iden": "TARGET_DEVICE_IDEN",
       "addresses": ['+819000000000'],
       "message": "The text message you want to send"
     }
@@ -153,14 +153,18 @@ server.on("message", function (msg, rinfo) {
 							//#	}
 							//#})
 
+							//send sms
 							//get 6-digits as OTP code
 							var otpcode = String(Math.floor( Math.random() * 1000000 )).padStart(6, '0');
 							
-							//send sms
-							pushbullet_opt.json.addresses = [smsdest]
+							pushbullet_opt.json.data.addresses = [smsdest]
 							pushbullet_opt.json.data.message = "OTP code: " + otpcode
+							console.log('OTP code:' + otpcode)
 							request.post(pushbullet_opt, function (error, response, body) {
 								if (!error && response.statusCode == 200) {
+									console.log('response: ----------------')
+									console.log(body)
+									console.log('response: ----------------')
 									//set otpcode as RADIUS password and request re-auth
 									user.code = otpcode
 									challenges.push(user)
