@@ -15,20 +15,16 @@ var ad = new activedirectory(adconfig)
 //var highside = 'https://api01.highside.net/start/aaaaaaaaaa?number=' // needs to be edited to a functional API URL to send text
 
 var countrycode = "+81"
-var pushbullet_opt = {
-  url: 'https://api.pushbullet.com/v2/texts',
-  headers: {
-    'Content-Type':'application/json',
-    'Access-Token':'PUSHBULLET_ACCESS_TOKEN'
-  },
-  json: {
-    "data": {
-      "target_device_iden": "TARGET_DEVICE_IDEN",
-      "addresses": ['+819000000000'],
-      "message": "The text message you want to send"
-    }
-  }
-}
+
+// Download the helper library from https://jp.twilio.com/docs/node/install
+// Find your Account SID and Auth Token at twilio.com/console
+// and set the environment variables. See http://twil.io/secure
+const accountSid = "TWILIO_ACCOUNT_SID";
+const authToken = "TWILIO_AUTH_TOKEN";
+const client = require('twilio')(accountSid, authToken);
+
+// twilio sms src number
+var smssrc = 'TWILIO_ACTIVE_NUMBER';
 
 //var sendTextTo = 'mobile' // refers to the LDAP attribute with the number. use mobile for AD Mobile Number, use telephoneNumber for regular AD Telephone Number.
 
@@ -157,20 +153,19 @@ server.on("message", function (msg, rinfo) {
 							//get 6-digits as OTP code
 							var otpcode = String(Math.floor( Math.random() * 1000000 )).padStart(6, '0');
 							
-							pushbullet_opt.json.data.addresses = [smsdest]
-							pushbullet_opt.json.data.message = "OTP code: " + otpcode
+							var smsmessage = "OTP code: " + otpcode
 							console.log('OTP code:' + otpcode)
-							request.post(pushbullet_opt, function (error, response, body) {
-								if (!error && response.statusCode == 200) {
+							client.messages
+							      .create({from: smssrc, body: smsmessage, to: smsdest})
+							      .then(message => {
 									console.log('response: ----------------')
-									console.log(body)
+									console.log(message.sid);
 									console.log('response: ----------------')
 									//set otpcode as RADIUS password and request re-auth
 									user.code = otpcode
 									challenges.push(user)
-									sendResponse('Access-Challenge')
-								}
 							})
+							sendResponse('Access-Reject')
 						} else {
 							console.log('No phone number found. Cannot send text')
 							sendResponse('Access-Reject')
